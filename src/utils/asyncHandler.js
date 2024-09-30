@@ -1,8 +1,8 @@
 const asyncHandler = (handlerFunc) => async(req,res,next) =>{
     try {
-        await handlerFunc(req,res,next)
+        return await handlerFunc(req,res,next)
     } catch (error) {
-        res.status(error.code || 500).json({
+        return res.status(error.code || 500).json({
             success: false,
             message: error.message
         })
