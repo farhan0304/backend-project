@@ -5,6 +5,7 @@ import fileUploader from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken"
 import fileDelete from "../utils/DeleteFile.js";
+import mongoose from "mongoose";
 
 
 const generateAccessAndRefereshToken = async(userid)=>{
@@ -367,7 +368,7 @@ const channelInfo = asyncHandler(async (req,res)=>{
 
       console.log(userChannel)
 
-      if (!userChannel) {
+      if (!userChannel.length) {
         throw new ApiError(404,"Channel doesn't exist")
       }
 
@@ -375,6 +376,65 @@ const channelInfo = asyncHandler(async (req,res)=>{
       .json( new ApiResponse(201,userChannel,"Channel Details Successfully Fetched"))
       
 
+})
+
+const showWatchHistory = asyncHandler(async (req,res)=>{
+
+    const userId = (String)(req.user?._id);
+    if (!userId){
+        throw new ApiError(401,"User not found")
+    }
+
+    const history = await User.aggregate(
+        [
+            {
+               $match : {
+                _id: new mongoose.Types.ObjectId(userId)
+               } 
+            },
+            {
+                $lookup : {
+                    from: "videos",
+                    localField: "watchHistory",
+                    foreignField: "_id",
+                    as: "watchHistory",
+                    pipeline: [
+                        {
+                            $lookup: {
+                                from: "users",
+                                localField: "owner",
+                                foreignField: "_id",
+                                as: "owner",
+                                pipeline: [
+                                    {
+                                        $project: {
+                                            fullName: 1,
+                                            username: 1,
+                                            avatar: 1
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            $addFields: {
+                                owner: {
+                                    $first: "$owner"
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        ]
+    );
+    
+    if (!history.length){
+        throw new ApiError(404,"Unable to fetch User Watch History")
+    }
+
+    return res.status(201)
+    .json( new ApiResponse(201,history[0].watchHistory,"User Watch History Fetch Successfully"))
 })
 
 export {
@@ -387,6 +447,7 @@ export {
     updateAccountDetails,
     updateUserAvatar,
     updateUserCoverImage,
-    channelInfo
+    channelInfo,
+    showWatchHistory
 
 }
