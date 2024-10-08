@@ -4,6 +4,8 @@ import { User } from "../models/user.model.js";
 import fileUploader from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken"
+import fileDelete from "../utils/DeleteFile.js";
+
 
 const generateAccessAndRefereshToken = async(userid)=>{
     try {
@@ -255,6 +257,10 @@ const updateUserAvatar = asyncHandler(async (req,res)=>{
     const localFilePath = req?.file?.path;
     const avatarResponse = await fileUploader(localFilePath);
     const avatar = avatarResponse?.url;
+    const oldAvatarUrl = req.user?.avatar;
+    const publicId = oldAvatarUrl.match(/upload\/(?:v\d+\/)?([^\.]+)/)[1];
+    
+    // console.log(publicId)
 
     const user = await User.findByIdAndUpdate(req.user._id,{
         $set:{
@@ -267,6 +273,8 @@ const updateUserAvatar = asyncHandler(async (req,res)=>{
     if (!user){
         throw new ApiError(401,"Avatar did not changed")
     }
+    
+    const deleteResult = await fileDelete(publicId);
 
     res.status(200).json(
         new ApiResponse(200,user,"Avatar change successfully")
@@ -277,6 +285,10 @@ const updateUserCoverImage = asyncHandler(async (req,res)=>{
     const localFilePath = req?.file?.path;
     const coverImageResponse = await fileUploader(localFilePath);
     const coverImage = coverImageResponse?.url;
+
+    const oldCoverimageUrl = req.user?.coverImage;
+    const publicId = oldCoverimageUrl.match(/upload\/(?:v\d+\/)?([^\.]+)/)[1];
+    // console.log(publicId)
 
     const user = await User.findByIdAndUpdate(req.user._id,{
         $set:{
@@ -289,6 +301,8 @@ const updateUserCoverImage = asyncHandler(async (req,res)=>{
     if (!user){
         throw new ApiError(401,"Cover Image did not changed")
     }
+
+    const deleteResult = await fileDelete(publicId);
 
     res.status(200).json(
         new ApiResponse(200,user,"Cover Image change successfully")
