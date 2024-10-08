@@ -309,6 +309,74 @@ const updateUserCoverImage = asyncHandler(async (req,res)=>{
     )
 })
 
+const channelInfo = asyncHandler(async (req,res)=>{
+    const username = req.params;
+    if (!username){
+        throw new ApiError(404,"Username is not Provided");
+    }
+    const userChannel = await User.aggregate([
+        {
+          '$match': {
+            username
+          }
+        }, {
+          '$lookup': {
+            'from': 'subscriptions', 
+            'localField': '_id', 
+            'foreignField': 'channel', 
+            'as': 'SubscribersUser'
+          }
+        }, {
+          '$lookup': {
+            'from': 'subscriptions', 
+            'localField': '_id', 
+            'foreignField': 'subscriber', 
+            'as': 'SubscriberedToUser'
+          }
+        }, {
+          '$addFields': {
+            'subscriberCount': {
+              '$size': '$SubscribersUser'
+            }, 
+            'subscribedToCount': {
+              '$size': '$SubscriberedToUser'
+            }, 
+            'isSubscribed': {
+              '$cond': {
+                'if': {
+                  '$in': [
+                    req.user?._id, '$SubscribersUser.subscriber'
+                  ]
+                }, 
+                'then': true, 
+                'else': false
+              }
+            }
+          }
+        }, {
+          '$project': {
+            '_id': 1,
+            'username': 1,
+            'fullName': 1, 
+            'subscriberCount': 1, 
+            'subscribedToCount': 1, 
+            'isSubscribed': 1
+          }
+        }
+      ])
+
+      console.log(userChannel)
+
+      if (!userChannel) {
+        throw new ApiError(404,"Channel doesn't exist")
+      }
+
+      return res.status(201)
+      .json( new ApiResponse(201,userChannel,"Channel Details Successfully Fetched"))
+      
+
+})
+
 export {
     registerUser,
     loginUser,
@@ -318,6 +386,7 @@ export {
     getCurrentUser,
     updateAccountDetails,
     updateUserAvatar,
-    updateUserCoverImage
+    updateUserCoverImage,
+    channelInfo
 
 }
