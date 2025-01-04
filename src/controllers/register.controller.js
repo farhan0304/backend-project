@@ -311,62 +311,66 @@ const updateUserCoverImage = asyncHandler(async (req,res)=>{
 })
 
 const channelInfo = asyncHandler(async (req,res)=>{
-    const username = req.params;
+    const {username} = req.params;
+    const userId = req?.user?._id;
+    
+    if(!userId){
+        throw new ApiError(404,"UserId not Fetched");
+    }
     if (!username){
         throw new ApiError(404,"Username is not Provided");
     }
     const userChannel = await User.aggregate([
         {
-          '$match': {
+          $match: {
             username
           }
         }, {
-          '$lookup': {
-            'from': 'subscriptions', 
-            'localField': '_id', 
-            'foreignField': 'channel', 
-            'as': 'SubscribersUser'
+            $lookup: {
+                from: 'subscriptions', 
+                localField: '_id', 
+                foreignField: 'channel', 
+                as: 'SubscribersUser'
           }
         }, {
-          '$lookup': {
-            'from': 'subscriptions', 
-            'localField': '_id', 
-            'foreignField': 'subscriber', 
-            'as': 'SubscriberedToUser'
+            $lookup: {
+                from: 'subscriptions', 
+                localField: '_id', 
+                foreignField: 'subscriber', 
+                as: 'SubscriberedToUser'
           }
         }, {
-          '$addFields': {
-            'subscriberCount': {
-              '$size': '$SubscribersUser'
+            $addFields: {
+                subscriberCount: {
+                $size: '$SubscribersUser'
             }, 
-            'subscribedToCount': {
-              '$size': '$SubscriberedToUser'
+            subscribedToCount: {
+                $size: '$SubscriberedToUser'
             }, 
-            'isSubscribed': {
-              '$cond': {
-                'if': {
-                  '$in': [
-                    req.user?._id, '$SubscribersUser.subscriber'
+            isSubscribed: {
+                $cond: {
+                 if: {
+                  $in: [
+                    userId, '$SubscribersUser.subscriber'
                   ]
                 }, 
-                'then': true, 
-                'else': false
+                then: true, 
+                else: false
               }
             }
           }
         }, {
-          '$project': {
-            '_id': 1,
-            'username': 1,
-            'fullName': 1, 
-            'subscriberCount': 1, 
-            'subscribedToCount': 1, 
-            'isSubscribed': 1
+        $project: {
+            _id: 1,
+            username: 1,
+            fullName: 1, 
+            subscriberCount: 1, 
+            subscribedToCount: 1, 
+            isSubscribed: 1
           }
         }
       ])
 
-      console.log(userChannel)
 
       if (!userChannel.length) {
         throw new ApiError(404,"Channel doesn't exist")
