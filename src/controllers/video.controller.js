@@ -7,6 +7,7 @@ import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
 import fileUploader from "../utils/cloudinary.js"
 import videoUploader from "../utils/videoUpload.js";
+import fileDelete from "../utils/DeleteFile.js";
 
 
 const getAllVideos = asyncHandler(async (req, res) => {
@@ -96,7 +97,7 @@ const updateVideo = asyncHandler(async (req, res) => {
     //TODO: update video details like title, description, thumbnail
     let title = req.body?.title;
     let description = req.body?.description;
-    let thumbnailPath = req.file?.thumbnail[0]?.path;
+    let thumbnailPath = req.file?.path;
 
     if(!(title || description || thumbnailPath)){
         throw new ApiError(404,"Atleast one field is required to Update Video");
@@ -110,10 +111,14 @@ const updateVideo = asyncHandler(async (req, res) => {
     if(!videoDoc){
         throw new ApiError(401,"Video Id is not valid");
     }
+    const thumbnailUrl = videoDoc?.thumbnail;
+    const thumbnailPublicId = thumbnailUrl.match(/upload\/(?:v\d+\/)?([^\.]+)/)[1];
+
     if(newThumbnail){
         videoDoc.thumbnail = newThumbnail;
+        fileDelete(thumbnailPublicId);
     }
-    if(title){
+    if(title && title!==undefined){
         videoDoc.title = title;
     }
     if(description){
@@ -137,6 +142,20 @@ const deleteVideo = asyncHandler(async (req, res) => {
         throw new ApiError(401,"Video Id is not valid");
     }
     const videoDoc = await Video.findByIdAndDelete(videoId);
+    const videoUrl = videoDoc?.videoFile;
+    const thumbnailUrl = videoDoc?.thumbnail;
+
+    const videoPublicId = videoUrl.match(/upload\/(?:v\d+\/)?([^\.]+)/)[1];
+    const thumbnailPublicId = thumbnailUrl.match(/upload\/(?:v\d+\/)?([^\.]+)/)[1];
+
+    if(videoPublicId){
+        console.log(videoPublicId);
+        fileDelete(videoPublicId,"video");
+    }
+    if(thumbnailPublicId){
+        fileDelete(thumbnailPublicId);
+    }
+
     if(!videoDoc){
         throw new ApiError(404,"Video not found with the given Video Id");
     }
