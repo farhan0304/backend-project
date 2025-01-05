@@ -81,22 +81,86 @@ const uploadVideoFromCloudinary = asyncHandler(async (req, res) => {
 
 const getVideoById = asyncHandler(async (req, res) => {
     const { videoId } = req.params
-    //TODO: get video by id
+    if(!videoId){
+        throw new ApiError(401,"Video Id is missing");
+    }
+    if(!isValidObjectId(new mongoose.Types.ObjectId(String(videoId)))){
+        throw new ApiError(401,"Video Id is not valid");
+    }
+    const videoDoc = await Video.findById(videoId);
+    return res.status(200).json(new ApiResponse(200,videoDoc));
 })
 
 const updateVideo = asyncHandler(async (req, res) => {
     const { videoId } = req.params
     //TODO: update video details like title, description, thumbnail
+    let title = req.body?.title;
+    let description = req.body?.description;
+    let thumbnailPath = req.file?.thumbnail[0]?.path;
+
+    if(!(title || description || thumbnailPath)){
+        throw new ApiError(404,"Atleast one field is required to Update Video");
+    }
+    let newThumbnail=null;
+    if(thumbnailPath){
+        const thumbnailDetail = await fileUploader(thumbnailPath);
+        newThumbnail = thumbnailDetail.url;
+    }
+    const videoDoc = await Video.findById(videoId);
+    if(!videoDoc){
+        throw new ApiError(401,"Video Id is not valid");
+    }
+    if(newThumbnail){
+        videoDoc.thumbnail = newThumbnail;
+    }
+    if(title){
+        videoDoc.title = title;
+    }
+    if(description){
+        videoDoc.description = description;
+    }
+    videoDoc.save().then(doc=>{
+        return res.status(201).json(new ApiResponse(201,videoDoc));
+        
+    }).catch(err=>{
+        throw new ApiError(401,"Something went wrong in changing Published status");
+    });
 
 })
 
 const deleteVideo = asyncHandler(async (req, res) => {
     const { videoId } = req.params
-    //TODO: delete video
+    if(!videoId){
+        throw new ApiError(401,"Video Id is missing");
+    }
+    if(!isValidObjectId(new mongoose.Types.ObjectId(String(videoId)))){
+        throw new ApiError(401,"Video Id is not valid");
+    }
+    const videoDoc = await Video.findByIdAndDelete(videoId);
+    if(!videoDoc){
+        throw new ApiError(404,"Video not found with the given Video Id");
+    }
+
+    return res.status(200).json(new ApiResponse(200,videoDoc));
 })
 
 const togglePublishStatus = asyncHandler(async (req, res) => {
     const { videoId } = req.params
+    if(!videoId){
+        throw new ApiError(401,"Video Id is missing");
+    }
+    if(!isValidObjectId(new mongoose.Types.ObjectId(String(videoId)))){
+        throw new ApiError(401,"Video Id is not valid");
+    }
+    const videoDoc = await Video.findById(videoId);
+    const publishStatus = videoDoc.isPublished;
+    videoDoc.isPublished = !publishStatus;
+    videoDoc.save().then(doc=>{
+        return res.status(201).json(new ApiResponse(201,videoDoc));
+        
+    }).catch(err=>{
+        throw new ApiError(401,"Something went wrong in changing Published status");
+    });
 })
 
 export {

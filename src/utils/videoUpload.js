@@ -17,7 +17,7 @@ const videoUploader = async (localFilePath,userId="1") =>{
                 context: `userid=${userId}`,
                 chunk_size: 6000000,
                 eager_async: true,
-                notification_url: "https://44bc-103-95-83-219.ngrok-free.app/cloudinary-webhook"
+                notification_url: "https://ed9e-103-95-83-219.ngrok-free.app/cloudinary-webhook"
             }
         )
         console.log("File is uploaded in cloudinary: ",uploadResult.url);
