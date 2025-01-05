@@ -6,6 +6,7 @@ import {
     publishAVideo,
     togglePublishStatus,
     updateVideo,
+    uploadVideoFromCloudinary,
 } from "../controllers/video.controller.js"
 import {jwtVerify} from "../middlewares/auth.middleware.js"
 import {upload} from "../middlewares/multer.middleware.js"
@@ -30,6 +31,11 @@ router
         ]),
         publishAVideo
     );
+
+router
+    .route("/cloudinary-webhook")
+    .post(uploadVideoFromCloudinary);
+
 
 router
     .route("/:videoId")
