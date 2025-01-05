@@ -32,9 +32,7 @@ router
         publishAVideo
     );
 
-router
-    .route("/cloudinary-webhook")
-    .post(uploadVideoFromCloudinary);
+
 
 
 router

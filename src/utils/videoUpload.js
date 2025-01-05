@@ -7,16 +7,17 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_API_SECRET 
 });
 
-const videoUploader = async (localFilePath) =>{
+const videoUploader = async (localFilePath,userId="1") =>{
     try {
         if (!localFilePath) return null;
         const uploadResult = await cloudinary.uploader
         .upload_large(
             localFilePath, {
                 resource_type:"video",
+                context: `userid=${userId}`,
                 chunk_size: 6000000,
-                // eager_async: true,
-                // eager_notification_url: "/cloudinary-webhook"
+                eager_async: true,
+                notification_url: "https://44bc-103-95-83-219.ngrok-free.app/cloudinary-webhook"
             }
         )
         console.log("File is uploaded in cloudinary: ",uploadResult.url);

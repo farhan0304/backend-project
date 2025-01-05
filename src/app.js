@@ -20,10 +20,12 @@ app.use(cookieParser());
 import userRoute from "./routes/user.routes.js";
 import subscriptionRouter from './routes/subscription.routes.js'
 import videoRouter from './routes/video.routes.js'
+import { uploadVideoFromCloudinary } from "./controllers/video.controller.js";
 
 app.use("/api/v1/users",userRoute);
 app.use("/api/v1/subscriptions", subscriptionRouter);
 app.use("/api/v1/videos", videoRouter);
+app.post("/cloudinary-webhook",uploadVideoFromCloudinary);
 
 
 export {app}
