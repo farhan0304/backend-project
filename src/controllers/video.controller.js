@@ -1,6 +1,5 @@
 import mongoose,{isValidObjectId, Mongoose} from "mongoose";
 import { Video } from "../models/video.model.js";
-import {User} from "../models/user.model.js"
 import { nanoid } from "nanoid";
 import {ApiError} from "../utils/ApiError.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
@@ -13,6 +12,58 @@ import fileDelete from "../utils/DeleteFile.js";
 const getAllVideos = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query
     //TODO: get all videos based on query, sort, pagination
+    const options = {
+        page,
+        limit,
+    };
+    if(sortBy&&sortType){
+        const sortQuery = {};
+        sortQuery[sortBy] = sortType;
+        options.sort = sortQuery;
+    }
+    const currentUserId = req?.user?._id;
+    if(!currentUserId){
+        throw new ApiError(404,"Something went wrong in fetching Current User ID")
+    }
+    let pipeline = [
+        {
+            $match: {
+                $or: [
+                    {
+                        isPublished: true
+                    },
+                    {
+                        owner: new mongoose.Types.ObjectId(String(currentUserId))
+                    }
+                ]
+            }
+        }
+    ];
+    if(userId){
+        const newPipeline =  {
+            $match: {
+                owner: new mongoose.Types.ObjectId(String(userId))
+            }
+        };
+        pipeline.push(newPipeline);
+    };
+    if(query){
+        try {
+            const queryObject = JSON.parse(query);
+            console.log(queryObject);
+        } catch (error) {
+            throw new ApiError(400,error)
+        }
+        
+    }
+    
+  
+    const result = await Video.aggregatePaginate(pipeline,options);
+    
+    if(!result){
+        throw new ApiError("Result not fetched")
+    }
+    res.status(200).json(new ApiResponse(200,result.docs)); 
 })
 
 const publishAVideo = asyncHandler(async (req, res) => {
@@ -102,15 +153,23 @@ const updateVideo = asyncHandler(async (req, res) => {
     if(!(title || description || thumbnailPath)){
         throw new ApiError(404,"Atleast one field is required to Update Video");
     }
+
+    const videoDoc = await Video.findById(videoId);
+    if(!videoDoc){
+        throw new ApiError(401,"Video Id is not valid");
+    }
+    const userID = String(req?.user?._id);
+    const ownerId = String(videoDoc.owner);
+    if(userID && ownerId !== userID ){
+        throw new ApiError(401,"You are not authorized to do this action");
+    }
+
     let newThumbnail=null;
     if(thumbnailPath){
         const thumbnailDetail = await fileUploader(thumbnailPath);
         newThumbnail = thumbnailDetail.url;
     }
-    const videoDoc = await Video.findById(videoId);
-    if(!videoDoc){
-        throw new ApiError(401,"Video Id is not valid");
-    }
+    
     const thumbnailUrl = videoDoc?.thumbnail;
     const thumbnailPublicId = thumbnailUrl.match(/upload\/(?:v\d+\/)?([^\.]+)/)[1];
 
@@ -141,7 +200,18 @@ const deleteVideo = asyncHandler(async (req, res) => {
     if(!isValidObjectId(new mongoose.Types.ObjectId(String(videoId)))){
         throw new ApiError(401,"Video Id is not valid");
     }
-    const videoDoc = await Video.findByIdAndDelete(videoId);
+
+    const videoDoc = await Video.findById(videoId);
+    if(!videoDoc){
+        throw new ApiError(404,"Video not found with the given Video Id");
+    }
+
+    const userID = String(req?.user?._id);
+    const ownerId = String(videoDoc.owner);
+    if(userID && ownerId !== userID ){
+        throw new ApiError(401,"You are not authorized to do this action");
+    }
+    await Video.findByIdAndDelete(videoId);
     const videoUrl = videoDoc?.videoFile;
     const thumbnailUrl = videoDoc?.thumbnail;
 
@@ -156,9 +226,7 @@ const deleteVideo = asyncHandler(async (req, res) => {
         fileDelete(thumbnailPublicId);
     }
 
-    if(!videoDoc){
-        throw new ApiError(404,"Video not found with the given Video Id");
-    }
+    
 
     return res.status(200).json(new ApiResponse(200,videoDoc));
 })
@@ -174,6 +242,11 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
     const videoDoc = await Video.findById(videoId);
     const publishStatus = videoDoc.isPublished;
     videoDoc.isPublished = !publishStatus;
+    const userID = String(req?.user?._id);
+    const ownerId = String(videoDoc.owner);
+    if(userID && ownerId !== userID ){
+        throw new ApiError(401,"You are not authorized to do this action");
+    }
     videoDoc.save().then(doc=>{
         return res.status(201).json(new ApiResponse(201,videoDoc));
         
