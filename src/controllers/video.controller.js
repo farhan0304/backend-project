@@ -50,7 +50,8 @@ const getAllVideos = asyncHandler(async (req, res) => {
     if(query){
         try {
             const queryObject = JSON.parse(query);
-            console.log(queryObject);
+            pipeline.push(queryObject);
+            // console.log(queryObject);
         } catch (error) {
             throw new ApiError(400,error)
         }
