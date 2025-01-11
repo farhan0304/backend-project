@@ -7,6 +7,7 @@ import {asyncHandler} from "../utils/asyncHandler.js"
 import fileUploader from "../utils/cloudinary.js"
 import videoUploader from "../utils/videoUpload.js";
 import fileDelete from "../utils/DeleteFile.js";
+import { User } from "../models/user.model.js";
 
 
 const getAllVideos = asyncHandler(async (req, res) => {
@@ -133,14 +134,31 @@ const uploadVideoFromCloudinary = asyncHandler(async (req, res) => {
 })
 
 const getVideoById = asyncHandler(async (req, res) => {
-    const { videoId } = req.params
+    const { videoId } = req.params;
+    const userId = req?.user?._id;
+    if(!userId){
+        throw new ApiError(401,"Something went wrong in getting User Id");
+    }
     if(!videoId){
         throw new ApiError(401,"Video Id is missing");
     }
     if(!isValidObjectId(new mongoose.Types.ObjectId(String(videoId)))){
-        throw new ApiError(401,"Video Id is not valid");
+        throw new ApiError(401,"Video Id is not valid ");
     }
     const videoDoc = await Video.findById(videoId);
+    if(!videoDoc){
+        throw new ApiError(401,"No video found with given Video Id");
+    }
+    const views = videoDoc.views;
+    const userDoc = await User.findByIdAndUpdate(userId,{
+        $push:{
+            watchHistory: new mongoose.Types.ObjectId(String(videoId))
+        }
+    });
+
+    videoDoc.views = views+1;
+    videoDoc.save();
+
     return res.status(200).json(new ApiResponse(200,videoDoc));
 })
 

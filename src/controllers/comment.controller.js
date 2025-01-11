@@ -33,7 +33,7 @@ const getVideoComments = asyncHandler(async (req, res) => {
 const addComment = asyncHandler(async (req, res) => {
     
     const {videoId} = req.params;
-    const {content} = req.body;
+    const { content } = req.body;
     
     if(!content){
         throw new ApiError(401,"Content is Required");
@@ -76,6 +76,7 @@ const updateComment = asyncHandler(async (req, res) => {
         throw new ApiError(401,"Comment Id is not valid MongoDb Id");
     }
     const userId = req?.user?._id;
+
     if(!userId){
         throw new ApiError(401,"Something went wrong in fetching in User Id");
     }
@@ -83,20 +84,22 @@ const updateComment = asyncHandler(async (req, res) => {
     if(!commentDoc){
         throw new ApiError(404,"Comment Id is not valid");
     }
-    if(commentDoc.owner !== userId){
+    const userIdString = String(userId);
+    const ownerString = String(commentDoc.owner);
+    if(userIdString !== ownerString){
         throw new ApiError(401,"You are not Authorized to edit comment");
     }
 
     commentDoc.content = content;
     commentDoc.save();
 
-    return res.status(201,new ApiResponse(201,commentDoc));
+    return res.status(200).json(new ApiResponse(200,commentDoc));
 
 })
 
 const deleteComment = asyncHandler(async (req, res) => {
     
-    const {commentId} = req.body;
+    const {commentId} = req.params;
     if(!commentId){
         throw new ApiError(401,"Comment Id is required");
     }
@@ -112,7 +115,7 @@ const deleteComment = asyncHandler(async (req, res) => {
     if(!commentDoc){
         throw new ApiError(404,"Comment Id is not valid");
     }
-    if(commentDoc.owner !== userId){
+    if(String(commentDoc.owner) !== String(userId)){
         throw new ApiError(401,"You are not Authorized to edit comment");
     }
     await Comment.findByIdAndDelete(comment);
