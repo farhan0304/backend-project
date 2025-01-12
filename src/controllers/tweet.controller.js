@@ -30,7 +30,8 @@ const createTweet = asyncHandler(async (req, res) => {
 
 const getUserTweets = asyncHandler(async (req, res) => {
     
-    const userId = req?.user?._id;
+    const {userId} = req.params;
+    
     
     if(!userId){
         throw new ApiError(401,"Something went wrong in fetching User Id");
