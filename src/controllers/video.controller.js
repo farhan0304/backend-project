@@ -158,8 +158,30 @@ const getVideoById = asyncHandler(async (req, res) => {
 
     videoDoc.views = views+1;
     videoDoc.save();
+    const videoAggregate = await Video.aggregate([
+        {
+            $match:{
+                _id: new mongoose.Types.ObjectId(String(videoId))
+            }
+        },
+        {
+            $lookup:{
+                from: "likes",
+                localField: "_id",
+                foreignField: "video",
+                as: "likes"
+            }
+        },
+        {
+            $addFields:{
+                likes:{
+                    $size: "$likes"
+                }
+            }
+        }
+    ]);
 
-    return res.status(200).json(new ApiResponse(200,videoDoc));
+    return res.status(200).json(new ApiResponse(200,videoAggregate[0]));
 })
 
 const updateVideo = asyncHandler(async (req, res) => {

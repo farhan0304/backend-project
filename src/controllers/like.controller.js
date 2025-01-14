@@ -199,7 +199,77 @@ const getLikedVideos = asyncHandler(async (req, res) => {
     if(!userId){
         throw new ApiError(400,"User is not logged in");
     }
-    return res.status(200).json(new ApiResponse(200,{message:"ok"}));
+
+    const likedVideos = await Like.aggregate([
+        {
+          '$match': {
+            '$and': [
+              {
+                'likedBy': new mongoose.Types.ObjectId(String(userId))
+              }, {
+                'video': {
+                  '$exists': true
+                }
+              }
+            ]
+          }
+        }, {
+          '$lookup': {
+            'from': 'videos', 
+            'localField': 'video', 
+            'foreignField': '_id', 
+            'as': 'LikedVideo', 
+            'pipeline': [
+              {
+                '$project': {
+                  'videoFile': 1, 
+                  'thumbnail': 1, 
+                  'title': 1, 
+                  'description': 1, 
+                  'views': 1, 
+                  'isPublished': 1, 
+                  'owner': 1
+                }
+              }, {
+                '$lookup': {
+                  'from': 'users', 
+                  'localField': 'owner', 
+                  'foreignField': '_id', 
+                  'as': 'owner', 
+                  'pipeline': [
+                    {
+                      '$project': {
+                        'username': 1, 
+                        'email': 1, 
+                        'avatar': 1, 
+                        'coverImage': 1
+                      }
+                    }
+                  ]
+                }
+              }, {
+                '$addFields': {
+                  'owner': {
+                    '$first': '$owner'
+                  }
+                }
+              }
+            ]
+          }
+        }, {
+          '$addFields': {
+            'LikedVideo': {
+              '$first': '$LikedVideo'
+            }
+          }
+        }
+      ]);
+
+    if(likedVideos.length == 0){
+        throw new ApiError(400,"Something went wrong in getting likedVideos");
+    }      
+
+    return res.status(200).json(new ApiResponse(200,likedVideos));
 })
 
 export {
